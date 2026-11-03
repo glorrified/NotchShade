@@ -6,7 +6,7 @@ A lightweight native macOS menu bar app that blends the camera notch into a blac
 
 ## Download and install
 
-[Download NotchShade 1.3 for Apple Silicon](Downloads/NotchShade-1.3.zip?raw=true).
+[Download NotchShade 1.4 for Apple Silicon](Downloads/NotchShade-1.4.zip?raw=true).
 
 Unzip, move NotchShade.app to Applications, and open it. Use its rectangle icon in the menu bar to enable the strip or adjust its height. Quit and replace any older copy before installing an update.
 
@@ -27,7 +27,11 @@ To launch at login, add the installed app in System Settings → General → Log
 
 NotchShade draws an independent overlay rather than changing your wallpaper. Ordinary live wallpaper windows should remain underneath it. Compatibility with WallpaperMachine is not guaranteed for every window mode.
 
-macOS controls menu bar material and icon contrast. A bright wallpaper may cause dark icons that are difficult to see over the black strip. Dark appearance and Show menu bar background can help. Using a dark system wallpaper beneath a live wallpaper is an unverified workaround; NotchShade does not currently apply it or force other apps' icons to white. Lock screen and system fullscreen transitions remain controlled by macOS.
+macOS controls menu bar icon contrast. WallpaperMachine can set a still frame from its animation as the system wallpaper, overriding a dark base. In WallpaperMachine’s settings, turn off **Use the wallpaper as the macOS desktop picture** first. In Quick Settings, the switch is called **Desktop picture** (桌面图片). If the switch is disabled, check whether **Animate lock screen** is on. With desktop picture sync off, WallpaperMachine can keep playing the live wallpaper while Mission Control uses your system wallpaper.
+
+Choose **Use Dark Base Wallpaper…** in NotchShade to remember your current wallpaper and set a black system wallpaper on the main display. You can also select **Black** under **System Settings → Wallpaper → Colors**. macOS can then use the dark system wallpaper when choosing icon contrast. NotchShade applies the change once when you ask, and macOS still controls the icon color.
+
+To undo the change, switch back to the same desktop and choose **Restore Previous Wallpaper…**. The saved image and placement are restored. For dynamic wallpapers or shuffles, reselect the original mode in System Settings if needed. Restore before uninstalling if you want to keep the original image. The black system wallpaper can be visible when your live wallpaper pauses or closes.
 
 ## Build from source
 
@@ -41,4 +45,4 @@ The build produces `build/NotchShade.zip` with a locally signed Apple Silicon ap
 
 ## Validation
 
-The version 1.3 app was compiled and its signature checked. Earlier startup checks verified overlay creation, and version 1.1 verified that the actual panel frame matched the requested top-edge frame. Live wallpaper compatibility and all macOS appearance combinations have not been exhaustively tested.
+The build verifies the app signature. Test dark-base compatibility with your live wallpaper running and use the restore command if the result does not suit your setup.
