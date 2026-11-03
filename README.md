@@ -6,7 +6,7 @@ A lightweight native macOS menu bar app that blends the camera notch into a blac
 
 ## Download and install
 
-[Download NotchShade 1.4 for Apple Silicon](Downloads/NotchShade-1.4.zip?raw=true).
+[Download NotchShade 1.4.2 for Apple Silicon](Downloads/NotchShade-1.4.2.zip?raw=true).
 
 Unzip, move NotchShade.app to Applications, and open it. Use its rectangle icon in the menu bar to enable the strip or adjust its height. Quit and replace any older copy before installing an update.
 

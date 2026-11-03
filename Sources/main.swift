@@ -14,7 +14,7 @@ final class ShadePanel: NSPanel {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var item: NSStatusItem!
-    private var panels: [NSPanel] = []
+    private var panels: [NSNumber: [ShadePanel]] = [:]
     private let prefs = UserDefaults.standard
     private let wallpaperBackupKey = "darkBaseWallpaperBackup"
     private var enabled: Bool { !prefs.bool(forKey: "disabled") }
@@ -31,11 +31,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         item.button?.image = NSImage(systemSymbolName: "rectangle.topthird.inset.filled", accessibilityDescription: "NotchShade")
         item.button?.toolTip = "NotchShade — black out the notch area"
         NotificationCenter.default.addObserver(self, selector: #selector(refresh), name: NSApplication.didChangeScreenParametersNotification, object: nil)
-        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(refresh), name: NSWorkspace.activeSpaceDidChangeNotification, object: nil)
+        // The panels follow Spaces themselves. Recreating them during a
+        // full-screen transition briefly exposes the wallpaper underneath.
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(refresh), name: NSWorkspace.didWakeNotification, object: nil)
         refresh()
         if CommandLine.arguments.contains("--smoke-test") {
-            print("NotchShade started: \(NSScreen.screens.count) display(s), \(panels.count) overlay(s).")
+            print("NotchShade started: \(NSScreen.screens.count) display(s), \(panels.values.reduce(0) { $0 + $1.count }) shade windows.")
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { NSApp.terminate(nil) }
         }
     }
@@ -80,35 +81,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func refresh() {
-        panels.forEach { $0.orderOut(nil); $0.close() }
-        panels.removeAll()
+        var activePanels: [NSNumber: [ShadePanel]] = [:]
         if enabled {
             for screen in NSScreen.screens where allDisplays || screen.safeAreaInsets.top > 0 {
+                guard let display = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { continue }
                 let height = min(screen.frame.height, max(screen.safeAreaInsets.top, NSStatusBar.system.thickness) + 1 + CGFloat(extraHeight))
                 let rect = NSRect(x: screen.frame.minX, y: screen.frame.maxY - height, width: screen.frame.width, height: height)
-                let panel = ShadePanel(contentRect: rect, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
-                panel.setFrame(rect, display: false)
-                panel.backgroundColor = .black
-                panel.isOpaque = true
-                panel.hasShadow = false
-                panel.ignoresMouseEvents = true
-                panel.hidesOnDeactivate = false
-                panel.isReleasedWhenClosed = false
-                panel.isMovable = false
-                panel.animationBehavior = .none
-                // Above wallpaper/application content, below system menu text and menus.
-                panel.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue - 1)
-                panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
-                if #available(macOS 13.0, *) { panel.collectionBehavior.insert(.canJoinAllApplications) }
-                panel.orderFrontRegardless()
-                if CommandLine.arguments.contains("--smoke-test") {
-                    print("Requested: \(rect); actual: \(panel.frame); safe inset: \(screen.safeAreaInsets.top)")
-                    precondition(panel.frame == rect, "Overlay must stay inside its requested top-edge bounds")
+                let shades = panels[display] ?? makeShades(frame: rect)
+                for panel in shades {
+                    if panel.frame != rect { panel.setFrame(rect, display: true, animate: false) }
+                    if !panel.isVisible { panel.orderFrontRegardless() }
+                    if CommandLine.arguments.contains("--smoke-test") {
+                        print("Level \(panel.level.rawValue): requested \(rect), actual \(panel.frame)")
+                        precondition(panel.frame == rect, "Shade must stay inside its requested top-edge bounds")
+                    }
                 }
-                panels.append(panel)
+                activePanels[display] = shades
             }
         }
+        for (display, shades) in panels where activePanels[display] == nil {
+            for panel in shades { panel.close() }
+        }
+        panels = activePanels
         updateMenu()
+    }
+
+    private func makeShades(frame: NSRect) -> [ShadePanel] {
+        let desktopLevel = Int(CGWindowLevelForKey(.desktopWindow)) + 1
+        let overlayLevel = NSWindow.Level.mainMenu.rawValue - 1
+        // The desktop shade sits directly above live wallpaper windows. It
+        // can cover the desktop while macOS recomposes the higher overlay.
+        let desktop = makeShade(frame: frame, level: desktopLevel)
+        desktop.collectionBehavior.insert(.fullScreenNone)
+        let overlay = makeShade(frame: frame, level: overlayLevel)
+        overlay.collectionBehavior.formUnion([.fullScreenAuxiliary, .canJoinAllApplications])
+        return [desktop, overlay]
+    }
+
+    private func makeShade(frame: NSRect, level: Int) -> ShadePanel {
+        let panel = ShadePanel(contentRect: frame, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.setFrame(frame, display: false)
+        panel.backgroundColor = .black
+        panel.isOpaque = true
+        panel.hasShadow = false
+        panel.ignoresMouseEvents = true
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.isMovable = false
+        panel.animationBehavior = .none
+        panel.level = NSWindow.Level(rawValue: level)
+        panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle]
+        return panel
     }
 
     @objc private func toggle() { prefs.set(enabled, forKey: "disabled"); refresh() }
