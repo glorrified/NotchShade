@@ -7,7 +7,7 @@ app="$notchshade_stage/NotchShade.app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources" build
 cp Resources/Info.plist "$app/Contents/Info.plist"
 cp Resources/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
-xcrun swiftc -O -target arm64-apple-macosx13.0 -module-cache-path "$notchshade_stage/module-cache" -framework AppKit Sources/main.swift -o "$app/Contents/MacOS/NotchShade"
+xcrun swiftc -O -target arm64-apple-macosx13.0 -module-cache-path "$notchshade_stage/module-cache" -framework AppKit -framework ServiceManagement Sources/main.swift -o "$app/Contents/MacOS/NotchShade"
 xattr -cr "$app"
 codesign --force --sign - "$app"
 codesign --verify --strict "$app"
